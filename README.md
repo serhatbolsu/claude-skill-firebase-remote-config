@@ -5,11 +5,9 @@ A small marketplace of Claude Code plugins. Add this marketplace once, then inst
 ## Quick install
 
 ```
-/plugin marketplace add serhatbolsu/firebase-rc-skill-plugin
+/plugin marketplace add serhatbolsu/claude-skill-firebase-remote-config
 /plugin install firebase-remote-config@serhat-skills
 ```
-
-Replace `serhatbolsu/firebase-rc-skill-plugin` with the actual GitHub path once published.
 
 ## Plugins
 
