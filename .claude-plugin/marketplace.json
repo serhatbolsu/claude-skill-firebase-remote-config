@@ -1,0 +1,14 @@
+{
+  "name": "serhat-skills",
+  "owner": {
+    "name": "Serhat Bolsu",
+    "email": "serhatbolsu@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "firebase-remote-config",
+      "source": "./plugins/firebase-remote-config",
+      "description": "Diff Firebase Remote Config + correlate with running A/B tests. Read-only."
+    }
+  ]
+}

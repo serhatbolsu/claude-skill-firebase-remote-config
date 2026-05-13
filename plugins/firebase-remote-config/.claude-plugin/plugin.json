@@ -1,0 +1,10 @@
+{
+  "name": "firebase-remote-config",
+  "description": "Diff Firebase Remote Config parameters and conditions between dates or version numbers, list every config change in a window, and correlate changes with the Firebase A/B tests running over the same window. Read-only. Outputs structured JSON suitable for downstream impact analysis.",
+  "author": {
+    "name": "Serhat Bolsu",
+    "email": "serhatbolsu@gmail.com"
+  },
+  "keywords": ["firebase", "remote-config", "ab-testing", "experiments", "diff", "changelog"],
+  "license": "MIT"
+}
