@@ -16,14 +16,11 @@ For (1) and (3) the skill **cross-references** the diff with experiments — whe
 
 ## Scripts (already installed, do not rewrite)
 
-All helper scripts live in `~/.claude/skills/firebase-remote-config/scripts/`. They are **persistent and idempotent** — do not re-create them in `/tmp/` each session.
+All helper scripts live in `${CLAUDE_SKILL_DIR}/scripts/`. They are **persistent and idempotent** — do not re-create them in `/tmp/` each session.
 
-Refer to this dir as `$SKILL_DIR` below:
-```bash
-SKILL_DIR="$HOME/.claude/skills/firebase-remote-config/scripts"
-```
+`${CLAUDE_SKILL_DIR}` is set automatically by Claude Code to the directory containing this SKILL.md, regardless of whether the skill is installed manually (`~/.claude/skills/firebase-remote-config/`) or via the plugin marketplace (`~/.claude/plugins/cache/.../`).
 
-Files in `$SKILL_DIR/`:
+Files in `${CLAUDE_SKILL_DIR}/scripts/`:
 - `rc-fetch.sh` — fetch versions list, fetch one template (with metadata injected), fetch experiments (with window filter), resolve "version live at date D". Auto-detects Firebase CLI vs. raw REST.
 - `rc-diff.py` — diff two template JSON files
 - `rc-overlay.py` — annotate a diff with overlapping experiments
@@ -67,7 +64,7 @@ If A predates the API's ~300-day retention, `resolve-version-at` returns empty. 
 
 ## Operations
 
-In all examples below: `PROJ=<project_id>`, `SKILL_DIR=$HOME/.claude/skills/firebase-remote-config/scripts`.
+In all examples below: `PROJ=<project_id>`. `${CLAUDE_SKILL_DIR}` is provided by the runtime — do not redefine it.
 
 ### Op 1 — Diff between two dates (with experiment overlay)
 
@@ -75,20 +72,20 @@ In all examples below: `PROJ=<project_id>`, `SKILL_DIR=$HOME/.claude/skills/fire
 DATE_A="2026-04-01T00:00:00Z"
 DATE_B="2026-05-01T00:00:00Z"
 
-VA=$("$SKILL_DIR/rc-fetch.sh" "$PROJ" resolve-version-at "$DATE_A")
-VB=$("$SKILL_DIR/rc-fetch.sh" "$PROJ" resolve-version-at "$DATE_B")
+VA=$("${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" resolve-version-at "$DATE_A")
+VB=$("${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" resolve-version-at "$DATE_B")
 echo "Versions: $VA → $VB"
 
-"$SKILL_DIR/rc-fetch.sh" "$PROJ" template "$VA" >/dev/null
-"$SKILL_DIR/rc-fetch.sh" "$PROJ" template "$VB" >/dev/null
+"${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" template "$VA" >/dev/null
+"${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" template "$VB" >/dev/null
 
-EXP=$("$SKILL_DIR/rc-fetch.sh" "$PROJ" experiments --range "$DATE_A" "$DATE_B")
+EXP=$("${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" experiments --range "$DATE_A" "$DATE_B")
 
-python3 "$SKILL_DIR/rc-diff.py" "/tmp/rc-v${VA}.json" "/tmp/rc-v${VB}.json" \
-  | python3 "$SKILL_DIR/rc-overlay.py" "$EXP" \
+python3 "${CLAUDE_SKILL_DIR}/scripts/rc-diff.py" "/tmp/rc-v${VA}.json" "/tmp/rc-v${VB}.json" \
+  | python3 "${CLAUDE_SKILL_DIR}/scripts/rc-overlay.py" "$EXP" \
   > "/tmp/rc-diff-${VA}-${VB}.json"
 
-python3 "$SKILL_DIR/rc-render.py" diff "/tmp/rc-diff-${VA}-${VB}.json"
+python3 "${CLAUDE_SKILL_DIR}/scripts/rc-render.py" diff "/tmp/rc-diff-${VA}-${VB}.json"
 ```
 
 Edge cases:
@@ -99,19 +96,19 @@ Edge cases:
 
 ```bash
 VA=42; VB=47
-"$SKILL_DIR/rc-fetch.sh" "$PROJ" template "$VA" >/dev/null
-"$SKILL_DIR/rc-fetch.sh" "$PROJ" template "$VB" >/dev/null
+"${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" template "$VA" >/dev/null
+"${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" template "$VB" >/dev/null
 
 # Derive window from the two versions' updateTime
 DATE_A=$(jq -r '.version.updateTime' "/tmp/rc-v${VA}.json")
 DATE_B=$(jq -r '.version.updateTime' "/tmp/rc-v${VB}.json")
-EXP=$("$SKILL_DIR/rc-fetch.sh" "$PROJ" experiments --range "$DATE_A" "$DATE_B")
+EXP=$("${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" experiments --range "$DATE_A" "$DATE_B")
 
-python3 "$SKILL_DIR/rc-diff.py" "/tmp/rc-v${VA}.json" "/tmp/rc-v${VB}.json" \
-  | python3 "$SKILL_DIR/rc-overlay.py" "$EXP" \
+python3 "${CLAUDE_SKILL_DIR}/scripts/rc-diff.py" "/tmp/rc-v${VA}.json" "/tmp/rc-v${VB}.json" \
+  | python3 "${CLAUDE_SKILL_DIR}/scripts/rc-overlay.py" "$EXP" \
   > "/tmp/rc-diff-${VA}-${VB}.json"
 
-python3 "$SKILL_DIR/rc-render.py" diff "/tmp/rc-diff-${VA}-${VB}.json"
+python3 "${CLAUDE_SKILL_DIR}/scripts/rc-render.py" diff "/tmp/rc-diff-${VA}-${VB}.json"
 ```
 
 ### Op 3 — Full changelog over a date range
@@ -120,25 +117,25 @@ python3 "$SKILL_DIR/rc-render.py" diff "/tmp/rc-diff-${VA}-${VB}.json"
 START="2026-04-01T00:00:00Z"
 END="2026-05-01T00:00:00Z"
 
-"$SKILL_DIR/rc-fetch.sh" "$PROJ" versions --range "$START" "$END" >/dev/null
+"${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" versions --range "$START" "$END" >/dev/null
 
 # Baseline = version live just before START (so first transition is a real diff)
-BASELINE=$("$SKILL_DIR/rc-fetch.sh" "$PROJ" resolve-version-at "$START")
+BASELINE=$("${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" resolve-version-at "$START")
 
 # Build oldest-first version list: [BASELINE, v_oldest_in_range, ..., v_newest_in_range]
 VERSIONS=$( ( [ -n "$BASELINE" ] && echo "$BASELINE"; \
               jq -r '.versions[].versionNumber' "/tmp/rc-versions-${PROJ}.json" | tac ) | uniq )
 
 for V in $VERSIONS; do
-  "$SKILL_DIR/rc-fetch.sh" "$PROJ" template "$V" >/dev/null
+  "${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" template "$V" >/dev/null
 done
 
-EXP=$("$SKILL_DIR/rc-fetch.sh" "$PROJ" experiments --range "$START" "$END")
+EXP=$("${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" experiments --range "$START" "$END")
 
-python3 "$SKILL_DIR/rc-changelog.py" "$SKILL_DIR" "$PROJ" "$EXP" $VERSIONS \
+python3 "${CLAUDE_SKILL_DIR}/scripts/rc-changelog.py" "${CLAUDE_SKILL_DIR}/scripts" "$PROJ" "$EXP" $VERSIONS \
   > "/tmp/rc-changelog-${START%T*}-to-${END%T*}.json"
 
-python3 "$SKILL_DIR/rc-render.py" changelog "/tmp/rc-changelog-${START%T*}-to-${END%T*}.json"
+python3 "${CLAUDE_SKILL_DIR}/scripts/rc-render.py" changelog "/tmp/rc-changelog-${START%T*}-to-${END%T*}.json"
 ```
 
 ### Op 3-lite — "Last N changes" (no date range)
@@ -146,30 +143,30 @@ python3 "$SKILL_DIR/rc-render.py" changelog "/tmp/rc-changelog-${START%T*}-to-${
 ```bash
 N=5
 
-"$SKILL_DIR/rc-fetch.sh" "$PROJ" versions --limit $((N+1)) >/dev/null
+"${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" versions --limit $((N+1)) >/dev/null
 
 # Versions are newest-first in the list — reverse for oldest-first
 VERSIONS=$(jq -r '.versions[].versionNumber' "/tmp/rc-versions-${PROJ}.json" | tac)
 
 for V in $VERSIONS; do
-  "$SKILL_DIR/rc-fetch.sh" "$PROJ" template "$V" >/dev/null
+  "${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" template "$V" >/dev/null
 done
 
 # Window for experiments = oldest to newest of the N+1 versions
 DATE_A=$(jq -r '.versions[-1].updateTime' "/tmp/rc-versions-${PROJ}.json")
 DATE_B=$(jq -r '.versions[0].updateTime'  "/tmp/rc-versions-${PROJ}.json")
-EXP=$("$SKILL_DIR/rc-fetch.sh" "$PROJ" experiments --range "$DATE_A" "$DATE_B")
+EXP=$("${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" experiments --range "$DATE_A" "$DATE_B")
 
-python3 "$SKILL_DIR/rc-changelog.py" "$SKILL_DIR" "$PROJ" "$EXP" $VERSIONS \
+python3 "${CLAUDE_SKILL_DIR}/scripts/rc-changelog.py" "${CLAUDE_SKILL_DIR}/scripts" "$PROJ" "$EXP" $VERSIONS \
   > "/tmp/rc-changelog-last${N}.json"
 
-python3 "$SKILL_DIR/rc-render.py" changelog "/tmp/rc-changelog-last${N}.json"
+python3 "${CLAUDE_SKILL_DIR}/scripts/rc-render.py" changelog "/tmp/rc-changelog-last${N}.json"
 ```
 
 ### Op 4 — List A/B tests in a window (standalone)
 
 ```bash
-EXP=$("$SKILL_DIR/rc-fetch.sh" "$PROJ" experiments --range "$DATE_A" "$DATE_B")
+EXP=$("${CLAUDE_SKILL_DIR}/scripts/rc-fetch.sh" "$PROJ" experiments --range "$DATE_A" "$DATE_B")
 jq '.experiments[] | {
   name: .name,
   displayName: (.definition.displayName // .displayName),
